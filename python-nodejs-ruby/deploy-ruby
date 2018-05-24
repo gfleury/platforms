@@ -62,7 +62,7 @@ if [ "$INSTALL_RUBY" == "1" ]; then
         echo "-- Using $GEM_SOURCE as remote gem source --"
         gem install --clear-sources --source=$GEM_SOURCE bundler
     fi
-    echo "export PATH=/home/application/current/vendor/bundle/ruby/${RUBY_VERSION}/bin/:\${PATH}" | tee -a ${HOME}/.profile /etc/profile >/dev/null
+    echo "export PATH=/home/application/current/vendor/bundle/ruby/${RUBY_VERSION}/bin/:\${PATH}" | sudo tee -a ${HOME}/.profile /etc/profile >/dev/null
 fi
 
 if [ -f ${CURRENT_DIR}/Gemfile ]; then

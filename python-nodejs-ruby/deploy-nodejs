@@ -105,3 +105,8 @@ elif [ -f ${CURRENT_DIR}/package.json ] ; then
     pushd $CURRENT_DIR && npm install ${PRODUCTION_FLAG}
     popd
 fi
+
+if [ -f ${CURRENT_DIR}/bower.json ] ; then
+    pushd $CURRENT_DIR && bower install || echo "!!! PLEASE REFERENCE BOWER ON package.json DEPENDENCIES. !!!" 2> /dev/null
+    popd
+fi
