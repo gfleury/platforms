@@ -1,0 +1,107 @@
+#!/bin/bash -el
+
+# Copyright 2015 tsuru authors. All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+SOURCE_DIR=/var/lib/tsuru
+source ${SOURCE_DIR}/base/deploy
+source ${SOURCE_DIR}/base/rc/config
+
+#find apps python version
+python_version_default="2.7.14"
+version_origin="default"
+
+if [ -n "${PYTHON_VERSION}" ]; then
+    version_origin="PYTHON_VERSION environment variable"
+else
+    PYTHON_VERSION="${python_version_default}"
+fi
+
+if [ -f "${CURRENT_DIR}/.python-version" ]; then
+    tmp_version=$(cat "${CURRENT_DIR}/.python-version")
+    if [ -n "${tmp_version}" ]; then
+        PYTHON_VERSION=${tmp_version}
+        version_origin=".python-version file"
+    fi
+fi
+
+function choose_closest_python() {
+    local VERSIONS="$(pyenv versions --skip-aliases --bare | sort -V)"
+    local TRY_PYTHON_VERSION="$1"
+    local CHOSEN_PYTHON_VERSION=""
+    local LAST_PYTHON_VERSION=""
+    while [[ "${LAST_PYTHON_VERSION}" != "${TRY_PYTHON_VERSION}" ]]; do
+        if echo "${VERSIONS}" | grep "${TRY_PYTHON_VERSION}" >/dev/null; then
+            CHOSEN_PYTHON_VERSION=$(echo "${VERSIONS}" | grep "${TRY_PYTHON_VERSION}" | head -1)
+            break
+        fi
+        LAST_PYTHON_VERSION="${TRY_PYTHON_VERSION}"
+        TRY_PYTHON_VERSION=$(echo ${TRY_PYTHON_VERSION} | sed -E 's/(.*)(\.|-)[^\.]*$/\1/g')
+    done
+    echo "${CHOSEN_PYTHON_VERSION}"
+}
+
+NEW_PYTHON_VERSION=$(choose_closest_python $PYTHON_VERSION)
+if [[ "${NEW_PYTHON_VERSION}" == "" ]]; then
+    echo "Python version '${PYTHON_VERSION}' (${version_origin}) is not supported."
+    echo "Valid python versions are:"
+    pyenv versions --skip-aliases --bare | grep -v "/env"
+    PYTHON_VERSION="${python_version_default}"
+    version_origin="default"
+elif [[ "${NEW_PYTHON_VERSION}" != "${PYTHON_VERSION}" ]]; then
+    echo "Exact python version '${PYTHON_VERSION}' (${version_origin}) is not supported."
+    echo "Closest version is '${NEW_PYTHON_VERSION}'."
+    PYTHON_VERSION="${NEW_PYTHON_VERSION}"
+    version_origin="${version_origin} (closest)"
+fi
+
+echo "-- Using python version: ${PYTHON_VERSION} (${version_origin}) --"
+
+APP_VENV="app_env_${PYTHON_VERSION}"
+
+# Create a app env if needed (with correct python version)
+if [ ! -e "${PYENV_ROOT}/versions/$APP_VENV" ]; then
+    pyenv virtualenv "${PYTHON_VERSION}" "${APP_VENV}"
+fi
+
+# install projects deps with pip
+pushd "$CURRENT_DIR"
+
+if [ -f "${CURRENT_DIR}/.python-version" ]; then
+    mv "${CURRENT_DIR}/.python-version" "${CURRENT_DIR}/.python-version.tsuru.original"
+fi
+
+pyenv global $APP_VENV
+
+if [[ "${PYTHON_PIP_VERSION}" ]]; then
+    PIP_VERSION_SPEC="${PYTHON_PIP_VERSION}"
+    if [[ "$PYTHON_PIP_VERSION" =~ ^[0-9] ]]; then
+        PIP_VERSION_SPEC="==${PYTHON_PIP_VERSION}"
+    fi
+    echo "Using pip version ${PIP_VERSION_SPEC}"
+    pip install "pip$PIP_VERSION_SPEC"
+else
+    echo "Using default pip version"
+fi
+
+# Use own pip.conf file
+if [ -f "${CURRENT_DIR}/.pip.conf" ]; then
+    PIP_CONFIG_FILE="${CURRENT_DIR}/.pip.conf"
+    export PIP_CONFIG_FILE
+    echo "PIP_CONFIG_FILE=${CURRENT_DIR}/.pip.conf" | tee -a ${HOME}/.profile /etc/profile >/dev/null
+fi
+
+if [ -f "${CURRENT_DIR}/Pipfile.lock" ]; then
+    echo "Pipfile.lock detected, using 'pipenv install --system --deploy' to install dependencies"
+    pip install pipenv
+    pipenv install --system --deploy
+    pyenv rehash
+elif [ -f "${CURRENT_DIR}/requirements.txt" ]; then
+    echo "requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies"
+    pip install -r ./requirements.txt
+elif [ -f "${CURRENT_DIR}/setup.py" ]; then
+    echo "setup.py detected, using 'pip install -e .' to install dependencies"
+    pip install --process-dependency-links -e .
+fi
+popd

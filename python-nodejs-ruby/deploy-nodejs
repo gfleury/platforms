@@ -1,0 +1,107 @@
+#!/bin/bash -le
+
+# Copyright 2015 tsuru authors. All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+SOURCE_DIR=/var/lib/tsuru
+source ${SOURCE_DIR}/base/rc/config
+
+if [ -n "${KEEP_NODE_MODULES}" ] && [ -d ${CURRENT_DIR}/node_modules ]; then
+	PLATFORM_EXTRA_RSYNC_ARGS="--filter \"protect node_modules/\""
+fi
+
+source ${SOURCE_DIR}/base/deploy
+
+NODE_VERSION=6.9.4
+
+if [ -f ${CURRENT_DIR}/.nvmrc ]; then
+    TMP_VERSION=$(cat ${CURRENT_DIR}/.nvmrc)
+elif [ -f ${CURRENT_DIR}/.node-version ]; then
+    TMP_VERSION=$(cat ${CURRENT_DIR}/.node-version)
+elif [ -f ${CURRENT_DIR}/package.json ]; then
+    TMP_VERSION=$(jq -r '.engines | .node | select(. != null)' ${CURRENT_DIR}/package.json)
+fi
+
+if [ -n "$TMP_VERSION" ]; then
+    NODE_VERSION=${TMP_VERSION}
+fi
+
+if [ $NPM_REGISTRY ]; then
+    echo "registry = $NPM_REGISTRY" > ~/.npmrc
+fi
+
+if [ $NVM_IOJS_ORG_MIRROR ] && [[ "$NODE_VERSION" =~ ^(iojs-v|v)?[123](\.[0-9]+)?(\.[0-9]+)? ]]; then
+    echo "disturl = $NVM_IOJS_ORG_MIRROR" >> ~/.npmrc
+elif [ $NVM_NODEJS_ORG_MIRROR ]; then
+    echo "disturl = $NVM_NODEJS_ORG_MIRROR" >> ~/.npmrc
+fi
+
+export NVM_DIR=${HOME}/.nvm
+[ ! -e ${NVM_DIR} ] && mkdir -p ${NVM_DIR}
+
+set +e
+. /etc/nvm/nvm.sh
+nvm_source_exit_code="$?"
+set -e
+
+if [[ "$nvm_source_exit_code" != "0" ]]; then
+    echo "WARNING: sourcing nvm.sh returned exit status ${nvm_source_exit_code}. This may not be a problem but report this message if the deploy fails."
+fi
+
+set +e
+nvm install "${NODE_VERSION}"
+nvm_install_exit_code="$?"
+set -e
+
+if [[ "$nvm_install_exit_code" != "0" ]]; then
+    echo "ERROR: \`nvm install \"${NODE_VERSION}\"\` returned exit status ${nvm_install_exit_code}."
+    exit "${nvm_install_exit_code}"
+fi
+
+rm -f ~/.nvm_bin
+ln -s $NVM_BIN ~/.nvm_bin
+
+# Set --production flag only if NPM_CONFIG_PRODUCTION env var is not set
+if [ -z "$NPM_CONFIG_PRODUCTION" ]; then
+  PRODUCTION_FLAG="--production"
+else
+  PRODUCTION_FLAG=""
+fi
+
+if [ -f "${CURRENT_DIR}/package.json" ] && [ -f "${CURRENT_DIR}/yarn.lock" ]; then
+    echo "yarn.lock detected, using yarn to install node packages"
+    YARN_DEFAULT_VERSION="1.3.2"
+    yarn_bin=${NVM_BIN}/yarn
+    if [ ! -f $yarn_bin ]; then
+    	YARN_VERSION=`CURRENT_DIR=${CURRENT_DIR} node -e 'var pkg = require(process.env.CURRENT_DIR+"/package.json"); console.log((pkg.engines && pkg.engines.yarn) ? pkg.engines.yarn.replace(" ", "") : "'${YARN_DEFAULT_VERSION}'")'`
+        npm install -g yarn@${YARN_VERSION}
+    fi
+    if [ $NPM_REGISTRY ]; then
+        echo "registry \"$NPM_REGISTRY\"" > ~/.yarnrc
+        sed -i "s|https?://registry.yarnpkg.com|$NPM_REGISTRY|g" ${CURRENT_DIR}/yarn.lock
+        sed -i "s|https?://registry.npmjs.org|$NPM_REGISTRY|g" ${CURRENT_DIR}/yarn.lock
+    fi
+    pushd $CURRENT_DIR
+    set +e
+    exec 9>&1
+    TMPFILE=`mktemp`
+    YARN_OUTPUT=`${yarn_bin} install ${PRODUCTION_FLAG} --non-interactive 2>&1 | tee /dev/fd/9; echo ${PIPESTATUS[0]} > $TMPFILE`
+    STATUS=`cat $TMPFILE 2>/dev/null || echo 1`
+    set -e
+    if [ $STATUS -ne 0 ]; then
+      if [[ $YARN_OUTPUT =~ ^.*unknown\ option.*--non-interactive.*$ ]]; then
+        # If --non-interactive flag is not available (older yarn versions), falls back to the default install command
+        ${yarn_bin} install ${PRODUCTION_FLAG}
+      else
+        exit $STATUS
+      fi
+    fi
+    popd
+elif [ -f ${CURRENT_DIR}/package.json ] ; then
+    if [ -f "${CURRENT_DIR}/package-lock.json" ]; then
+    	sed -i "s|https?://registry.npmjs.org|$NPM_REGISTRY|g" ${CURRENT_DIR}/package-lock.json
+    fi
+    pushd $CURRENT_DIR && npm install ${PRODUCTION_FLAG}
+    popd
+fi
