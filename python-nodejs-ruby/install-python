@@ -7,7 +7,9 @@
 SOURCE_DIR=/var/lib/tsuru
 source ${SOURCE_DIR}/base/rc/config
 
-PY_VERSIONS="2.7.14 3.5.5 3.6.5 pypy2.7-5.10.0 pypy3.5-5.10.1"
+#PY_VERSIONS="2.7.14 3.5.5 3.6.5 pypy2.7-5.10.0 pypy3.5-5.10.1"
+PY_VERSIONS="2.7.12 3.6.2"
+PY_DEFAULT_VERSION="2.7.12"
 PYENV_ROOT="/var/lib/pyenv"
 
 apt-get update
@@ -33,7 +35,7 @@ export CFLAGS='-O2'
 
 for pyversion in $PY_VERSIONS; do (pyenv install $pyversion); done
 
-pyenv global 2.7.14
+pyenv global ${PY_DEFAULT_VERSION}
 
 chown -R ${USER}:${USER} $PYENV_ROOT
 
