@@ -8,20 +8,38 @@ PARAMSZ=$@
 SOURCE_DIR=/var/lib/tsuru
 
 source ${SOURCE_DIR}/base/rc/config
-source ${SOURCE_DIR}/base/deploy
 
-if [ -f "${CURRENT_DIR}/git_key" ]; then
+case $1 in
+	"development")
+        cd /
+        SOURCE_DIR=/var/lib/tsuru
+        source ${SOURCE_DIR}/base/rc/config
+        source ${SOURCE_DIR}/base/rc/os_dependencies
+        os_dependencies
+		shift;
+		;;
+	*)
+        source ${SOURCE_DIR}/base/deploy
+		;;
+esac
+
+if [ -f "${CURRENT_DIR}/.git_key" ]; then
     echo Installing git ssh Key
     mkdir -p ~/.ssh
-    cp -f ${CURRENT_DIR}/git_key ~/.ssh/id_rsa
+    cp -f ${CURRENT_DIR}/.git_key ~/.ssh/id_rsa
     chmod 400 ~/.ssh/id_rsa
     echo "StrictHostKeyChecking no" >> ~/.ssh/config
 fi
 
-if [ -f "${CURRENT_DIR}/git_hosts" ]; then
+if [ -f "${CURRENT_DIR}/.git_hosts" ]; then
     echo Running ssh-keyscan
-    for HOST in $(cat ${CURRENT_DIR}/git_hosts); do
-        ssh-keyscan $HOST >> ~/.ssh/known_hosts
+    mkdir -p ~/.ssh
+    for HOST in $(cat ${CURRENT_DIR}/.git_hosts); do
+        url=(${HOST//:/ })
+        if [[ -n ${url[1]} ]]; then
+            PORT="-p ${url[1]}"
+        fi
+        ssh-keyscan $PORT ${url[0]} >> ~/.ssh/known_hosts
     done
 fi
 

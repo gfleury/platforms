@@ -11,7 +11,7 @@ if [ -d ${CURRENT_DIR}/vendor ]; then
     PLATFORM_EXTRA_RSYNC_ARGS=${PLATFORM_EXTRA_RSYNC_ARGS---exclude vendor/bundle}
 fi
 
-source ${SOURCE_DIR}/base/deploy
+#source ${SOURCE_DIR}/base/deploy
 
 if [ -f ${CURRENT_DIR}/Gemfile ]; then
     RUBY_VERSION=$(/usr/bin/ruby /var/lib/tsuru/ruby/ruby_version_eval.rb ${CURRENT_DIR}/Gemfile 2>/dev/null || echo "")
@@ -62,7 +62,8 @@ if [ "$INSTALL_RUBY" == "1" ]; then
         echo "-- Using $GEM_SOURCE as remote gem source --"
         gem install --clear-sources --source=$GEM_SOURCE bundler
     fi
-    echo "export PATH=/home/application/current/vendor/bundle/ruby/${RUBY_VERSION}/bin/:\${PATH}" | sudo tee -a ${HOME}/.profile /etc/profile >/dev/null
+    # TODO: Make it dynamic with something similar to PATH="$(ruby -rubygems -e 'puts Gem.user_dir')/bin:$PATH"
+    echo "export PATH=/home/application/current/vendor/bundle/ruby/2.1.0/bin/:\${PATH}" | sudo tee -a ${HOME}/.profile /etc/profile >/dev/null
 fi
 
 if [ -f ${CURRENT_DIR}/Gemfile ]; then
@@ -72,6 +73,6 @@ if [ -f ${CURRENT_DIR}/Gemfile ]; then
             sed -i "s,https\?://rubygems.org/\?,$GEM_SOURCE," ${CURRENT_DIR}/Gemfile.lock
         fi
     fi
-    pushd $CURRENT_DIR && bundle install --deployment --without ${BUNDLE_WITHOUT-development:test}
+    pushd $CURRENT_DIR && bundle install --no-deployment --without ${BUNDLE_WITHOUT-development:test}
     popd
 fi

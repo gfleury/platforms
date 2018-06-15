@@ -11,7 +11,7 @@ if [ -n "${KEEP_NODE_MODULES}" ] && [ -d ${CURRENT_DIR}/node_modules ]; then
 	PLATFORM_EXTRA_RSYNC_ARGS="--filter \"protect node_modules/\""
 fi
 
-source ${SOURCE_DIR}/base/deploy
+#source ${SOURCE_DIR}/base/deploy
 
 NODE_VERSION=6.9.4
 

@@ -5,7 +5,7 @@
 # license that can be found in the LICENSE file.
 
 SOURCE_DIR=/var/lib/tsuru
-source ${SOURCE_DIR}/base/deploy
+#source ${SOURCE_DIR}/base/deploy
 source ${SOURCE_DIR}/base/rc/config
 
 #find apps python version
@@ -89,7 +89,7 @@ fi
 if [ -f "${CURRENT_DIR}/.pip.conf" ]; then
     PIP_CONFIG_FILE="${CURRENT_DIR}/.pip.conf"
     export PIP_CONFIG_FILE
-    echo "PIP_CONFIG_FILE=${CURRENT_DIR}/.pip.conf" | tee -a ${HOME}/.profile /etc/profile >/dev/null
+    echo "PIP_CONFIG_FILE=${CURRENT_DIR}/.pip.conf" | sudo tee -a ${HOME}/.profile /etc/profile >/dev/null
 fi
 
 if [ -f "${CURRENT_DIR}/Pipfile.lock" ]; then
