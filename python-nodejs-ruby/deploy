@@ -59,7 +59,12 @@ fi
 
 if [ -n "${PGPASS}" ]; then 
     echo Installing pgpass at ~/.pgpass
-    echo -n "${PGPASS}" > ~/.pgpass
+    echo "${PGPASS}" > ~/.pgpass
+fi
+
+if [ -n "${APP_CONFIG_CONTENT}" ] && [ -n "${APP_CONFIG_FILE}" ]; then
+    echo Creating Application configuration file ${APP_CONFIG_FILE}
+    echo "${APP_CONFIG_CONTENT}" > $(eval echo $APP_CONFIG_FILE)
 fi
 
 for DEPLOY_FILE in ${SOURCE_DIR}/deploy-*; do
