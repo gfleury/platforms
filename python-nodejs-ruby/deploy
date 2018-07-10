@@ -29,18 +29,36 @@ if [ -f "${CURRENT_DIR}/.git_key" ]; then
     cp -f ${CURRENT_DIR}/.git_key ~/.ssh/id_rsa
     chmod 400 ~/.ssh/id_rsa
     echo "StrictHostKeyChecking no" >> ~/.ssh/config
+elif [ -n "${ID_RSA}" ]; then 
+    echo Installing git ssh Key from ENV var
+    mkdir -p ~/.ssh
+    echo "${ID_RSA}" > ~/.ssh/id_rsa
+    chmod 400 ~/.ssh/id_rsa
+    echo "StrictHostKeyChecking no" >> ~/.ssh/config
 fi
 
 if [ -f "${CURRENT_DIR}/.git_hosts" ]; then
     echo Running ssh-keyscan
     mkdir -p ~/.ssh
-    for HOST in $(cat ${CURRENT_DIR}/.git_hosts); do
+    for HOST in $(cat ${CURRENT_DIR}/.git_hosts; echo $GIT_HOSTS); do
         url=(${HOST//:/ })
         if [[ -n ${url[1]} ]]; then
             PORT="-p ${url[1]}"
         fi
         ssh-keyscan $PORT ${url[0]} >> ~/.ssh/known_hosts
     done
+fi
+
+if [ -n "${SSO_PUB}" ]; then 
+    echo Installing sso_pub.key at ~/.sso_pub.key
+    echo "${SSO_PUB}" > ~/.sso_pub.pem
+    chmod 400 ~/.sso_pub.pem
+fi
+
+if [ -n "${PGPASS}" ]; then 
+    echo Installing pgpass at ~/.pgpass
+    echo -n "${PGPASS}" > ~/.pgpass
+    chmod 400 ~/.pgpass
 fi
 
 for DEPLOY_FILE in ${SOURCE_DIR}/deploy-*; do
