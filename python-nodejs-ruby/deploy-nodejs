@@ -111,3 +111,9 @@ if [ -f ${CURRENT_DIR}/bower.json ] ; then
     pushd $CURRENT_DIR && npm install bower && bower install 2> /dev/null
     popd
 fi
+
+if [ -f ${CURRENT_DIR}/gulpfile.js ] ; then
+    source ~/.profile
+    pushd $CURRENT_DIR && npm install gulp gulp-cli 2> /dev/null
+    popd
+fi
