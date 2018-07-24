@@ -29,13 +29,13 @@ if [ -f "${CURRENT_DIR}/.git_key" ]; then
     cp -f ${CURRENT_DIR}/.git_key ~/.ssh/id_rsa
     chmod 400 ~/.ssh/id_rsa
     echo "StrictHostKeyChecking no" >> ~/.ssh/config
-elif [ -n "${ID_RSA}" ]; then 
+elif [ -n "${APP_ID_RSA}" ]; then 
     echo Installing git ssh Key from ENV var
     mkdir -p ~/.ssh
     if [ -f ~/.ssh/id_rsa ]; then
         rm -rf ~/.ssh/id_rsa
     fi
-    echo "${ID_RSA}" > ~/.ssh/id_rsa
+    echo "${APP_ID_RSA}" > ~/.ssh/id_rsa
     chmod 400 ~/.ssh/id_rsa
     echo "StrictHostKeyChecking no" >> ~/.ssh/config
 fi
@@ -52,14 +52,14 @@ if [ -f "${CURRENT_DIR}/.git_hosts" ]; then
     done
 fi
 
-if [ -n "${SSO_PUB}" ]; then 
+if [ -n "${APP_SSO_PUB_FILE}" ]; then 
     echo Installing sso_pub.key at ~/.sso_pub.key
-    echo "${SSO_PUB}" > ~/.sso_pub.pem
+    echo "${APP_SSO_PUB_FILE}" > ~/.sso_pub.pem
 fi
 
-if [ -n "${PGPASS}" ]; then 
+if [ -n "${APP_PGPASS_FILE}" ]; then 
     echo Installing pgpass at ~/.pgpass
-    echo "${PGPASS}" > ~/.pgpass
+    echo "${APP_PGPASS_FILE}" > ~/.pgpass
 fi
 
 if [ -n "${APP_CONFIG_CONTENT}" ] && [ -n "${APP_CONFIG_FILE}" ]; then
