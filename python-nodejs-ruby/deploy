@@ -60,6 +60,7 @@ fi
 if [ -n "${APP_PGPASS_FILE}" ]; then 
     echo Installing pgpass at ~/.pgpass
     echo "${APP_PGPASS_FILE}" > ~/.pgpass
+    chmod 0600 ~/.pgpass
 fi
 
 if [ -n "${APP_CONFIG_CONTENT}" ] && [ -n "${APP_CONFIG_FILE}" ]; then
