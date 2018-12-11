@@ -114,6 +114,7 @@ fi
 
 if [ -f ${CURRENT_DIR}/gulpfile.js ] ; then
     source ~/.profile
-    pushd $CURRENT_DIR && npm install gulp gulp-cli 2> /dev/null
+    # Stick version of gulp/gulp-cli to the latest working version
+    pushd $CURRENT_DIR && npm install gulp@3.9.1 gulp-cli@2.0.1 2> /dev/null
     popd
 fi
